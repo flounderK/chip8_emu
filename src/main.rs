@@ -80,7 +80,6 @@ impl Emu {
             input = &mut self.mem[self.regs.pc..];
             let (op_bytes, rest) = input.split_at(std::mem::size_of::<u16>());
             let op = u16::from_be_bytes(op_bytes.try_into().unwrap());
-            //println!("i {:4?} op {:x}", i, op);
 
             match op {
                 // display clear
@@ -96,14 +95,12 @@ impl Emu {
                         return;
                     }
                     self.regs.pc = ret_addr.unwrap() as usize;
+                    return;
                 }
                 // 0x0NNN call NNN
                 0x0000..=0x0fff | 0x2000..=0x2fff => {
                     self.stack.push(self.regs.pc as u16 + std::mem::size_of::<u16>() as u16);
                     self.regs.pc = (op & 0xfff) as usize;
-                    //if (i != 0){
-                    //    println!("call {:x}", i);
-                    //}
                     return;
                 }
                 // 0x1NNN goto NNN
@@ -151,9 +148,9 @@ impl Emu {
                 // TODO: check this
                 0x7000..=0x7fff => {
                     let vx = self.regs.reg_for(((op & 0x0f00) >> 8) as usize);
-                    let nn = (op & 0xff) as usize;
-                    let a = *vx as usize;
-                    *vx =  ((a + nn) % 0xff) as u8;
+                    let nn = (op & 0xff) as u8;
+                    let a = *vx as u8;
+                    *vx =  (a.wrapping_add(nn) % 0xff) as u8;
 
                 }
                 // 8xxx series
@@ -182,13 +179,13 @@ impl Emu {
                         // 8XY4 vx += Vy
                         // TODO: set carry if there is one
                         4 => {
-                            let a = *p_vx as usize;
-                            let b = vy as usize;
+                            let a = *p_vx;
+                            let b = vy;
                             if (*p_vx & vy) > 0 {
                                 carry_or_borrow = true;
                             }
-                            *p_vx = (a.wrapping_add(b) % 0xff) as u8;
-                            if carry_or_borrow == true {
+                            *p_vx = (a.wrapping_add(b)) as u8;
+                            if a > *p_vx {
                                 self.regs.vf = 1;
                             } else {
                                 self.regs.vf = 0;
@@ -267,7 +264,6 @@ impl Emu {
                 //execution of this instruction. As described above, VF is set to 1
                 //if any screen pixels are flipped from set to unset when the sprite is
                 //drawn, and to 0 if that does not happen
-                //TODO:
                 0xd000..=0xdfff => {
                     let vx = *self.regs.reg_for(((op & 0x0f00) >> 8) as usize);
                     let vy = *self.regs.reg_for(((op & 0x00f0) >> 4) as usize);
@@ -279,9 +275,6 @@ impl Emu {
                     if set_vf == true {
                         self.regs.vf = 1;
                     }
-
-                    //self.display.draw_rect(vx, vy, n);
-                    //println!("draw {:?}, {:?} {:?}", vx, vy, n);
                 }
 
                 0xe000..=0xefff => {
@@ -375,8 +368,6 @@ fn main() -> std::io::Result<()> {
     while emu.regs.pc < length {
         emu.tick();
     }
-    //emu.display.draw_rect(1, 1, 4);
-    //emu.display.draw_rect(52, 11, 4);
 
     Ok(())
 }
