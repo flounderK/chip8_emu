@@ -2,6 +2,7 @@
 use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
+use std::env;
 use std::convert::TryInto;
 mod display;
 use display::Display;
@@ -358,7 +359,14 @@ pub fn draw(){
 
 fn main() -> std::io::Result<()> {
     let mut emu = Emu::new();
-    let file = File::open("test_opcode.ch8")?;
+    let arg = env::args_os().nth(1);  //.map(|n| (*n, false));b
+    if arg == None {
+        println!("Usage: $0 <chip-8-binary>");
+        return Ok(())
+    }
+
+
+    let file = File::open(arg.unwrap())?;
     //let file = File::open("SCTEST.CH8")?;
     let mut buf_reader = BufReader::new(file);
     // chip 8 assumes programs are loaded at 0x200
